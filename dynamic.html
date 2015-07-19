@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Dynamic tracking</title>
+
+	<script src="js.js"></script>
+    <script type="text/javascript"
+      src="https://maps.googleapis.com/maps/api/js?sensor=true">
+    </script>
+
+	<script>
+		x = navigator.geolocation;
+		var marker = null;
+		var map, wilderness, new_marker;
+
+		//path render
+		var directionsDisplay;
+		var coords, coords2;
+
+		//boolean switches
+		var tracking = true;
+		var put_marker = false;
+		var showing = false;
+
+		//reverse data
+		var geocoder = new google.maps.Geocoder();
+
+		$(document).ready(function() {
+			initialize();
+			  jQuery('.where_am_I').click(function() {
+			  	alert(wilderness.formatted_address);
+			  });
+			  jQuery('.spawn_path').click(function() {
+				if(directionsDisplay != null) {
+				    directionsDisplay.setMap(null);
+				    directionsDisplay = null;
+				}
+			  	show_path();
+			  });
+			jQuery('.track_switch').click(function() {
+				if (tracking == true) {
+					tracking = !tracking;
+					$(this).html('Track');
+				}
+				else {
+					tracking = true;
+					$(this).html('Stop tracking');
+				}
+			});
+			jQuery('.show_switch').click(function() {
+				if (showing == true) {
+					showing = !showing;
+					put_marker = false;
+					$('#map .gm-style div').removeClass('aim');
+					$(this).html('Get Location');
+				}
+				else {
+					put_marker = false;
+					showing = true;
+					$('#map .gm-style div').addClass('aim');
+					$(this).html('Stop');
+				}
+			});
+			jQuery('.put_marker').click(function() {
+				if (put_marker == true) {
+					put_marker = false;
+					$('#map .gm-style div').removeClass('aim');
+					showing = false;
+					$(this).html('Put Marker');
+				}
+				else {
+					put_marker = true;
+					showing = false;
+					$('#map .gm-style div').addClass('aim');
+					$(this).html('Stop');
+				}
+			});
+
+			if (navigator.geolocation) {
+				var options = {
+					enableHighAccuracy : true,
+					timeout            : Infinity,
+					maximumAge         : 0
+				}
+				x.watchPosition(success, fail, options);
+			}
+			else  {
+				$('#lat').html('<p>HTML5 not supported</p>')
+			}
+			// Onclick show location
+			google.maps.event.addListener(map, 'click', function( event ){
+				if (showing == true) {
+			  		alert( "Latitude: "+event.latLng.lat()+" "+", longitude: "+event.latLng.lng() ); 
+					$('#map .gm-style div').removeClass('aim');
+					$('.show_switch').html('Get Location');
+					put_marker = false;
+					showing = false;
+				}
+				if (put_marker == true) {
+					coords2 = event.latLng;
+					placeMarker(coords2);
+					put_marker = false;
+					showing = false;
+					$('#map .gm-style div').removeClass('aim');
+					$('.put_marker').html('Put Marker');
+				}
+			});
+		});
+		function initialize() {
+			var mapOpt = {
+				zoom: 16,
+				zoomControl: false,
+				panControl: false,
+				streetViewControl: true,
+ rotateControl: true,
+  streetViewControl: true,
+  overviewMapControl: true,
+
+				center: new google.maps.LatLng(null, null),
+				mapTypeId: google.maps.MapTypeId.TERRAIN
+			}
+			map = new google.maps.Map(document.getElementById('map'), mapOpt);
+			marker = new google.maps.Marker({
+				map: map
+				//icon: 'marker.png'
+			});
+		      new_marker = new google.maps.Marker({
+		      map: map
+		  });
+		}
+
+		function success(position) {
+			var mylat = position.coords.latitude;
+			var mylong = position.coords.longitude;
+/*			$('#lat').html(mylat);
+			$('#long').html(mylong);*/
+
+			coords = new google.maps.LatLng(mylat, mylong);
+
+			var mapOptions = {
+				zoom: 16,
+				center: coords,
+				mapTypeId: google.maps.MapTypeId.TERRAIN
+			}
+			if (tracking == true) {
+			map.setCenter(coords);
+			}
+			marker.setPosition(coords);
+
+			geocoder.geocode({'latLng': coords}, function(results, status){
+			if (status == google.maps.GeocoderStatus.OK) {
+			  wilderness = results[1];
+			  //alert(wilderness.types);
+			  if (wilderness.types.indexOf('political') < 0) {
+				  alert('Jesteś w dziczy!');
+
+				  }
+			  }
+			});
+		}
+
+		function fail() {
+			$('#lat').html('<p>Co-ordinates not available!!</p>')
+		}
+		function placeMarker(location) {
+			new_marker.setPosition(location);
+		};
+		function show_path() {
+			if (coords2 == null) {
+				alert('Put destination point!');
+				return false;
+			}
+			else {
+			    var start = coords;
+			    var end = coords2;
+
+			    directionsDisplay = new google.maps.DirectionsRenderer({
+					   polylineOptions: {
+			              strokeWeight: 4,
+			              strokeOpacity: 0.7,
+					      strokeColor: "orange"
+					    },
+					    suppressMarkers: true
+			    });
+			    directionsDisplay.setMap(map);
+			    var request = {
+			        origin : start,
+			        destination : end,
+			        travelMode : google.maps.TravelMode.WALKING
+			    };
+			    var directionsService = new google.maps.DirectionsService(); 
+			    directionsService.route(request, function(response, status) {
+			        if (status == google.maps.DirectionsStatus.OK) {
+			            directionsDisplay.setDirections(response);
+			        }
+			    });
+			}
+		}
+	</script>
+
+	<style>
+		#map {
+			width: 100%;
+		    height: 100%;
+		    left: 0;
+		    position: absolute;
+		    top: 0;  
+		}
+		.aim {
+			cursor: crosshair;
+		}
+		.track_switch, .where_am_I, .show_switch, .put_marker, .spawn_path {
+			background: #FFB630;
+			position: absolute;
+			text-align: center;
+			border: 2px solid #FFE2AC;
+			color: white;
+			font-weight: bold;
+			display: block;
+			font-size: 18px;
+			line-height:45px;
+			width: 160px;
+			border-radius: 12px;
+			-webkit-box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.15);
+			-moz-box-shadow:    0px 1px 2px 1px rgba(0, 0, 0, 0.15);
+			box-shadow:         0px 1px 2px 1px rgba(0, 0, 0, 0.15);
+			left: 10px;
+			cursor: pointer;
+		}
+		.track_switch {
+			top: 45px;
+		}
+		.spawn_path {
+			bottom: 180px;
+		}
+		.put_marker {
+			bottom: 125px;
+		}
+		.show_switch {
+			bottom: 70px;
+		}
+		.where_am_I {
+			bottom: 15px;
+		}
+	</style>
+</head>
+<body class="aim">
+	<div id="map"></div>
+	<button class="track_switch">Stop tracking</button>
+	<button class="where_am_I">Where Am I?</button>
+	<button class="show_switch">Get Location</button>
+	<button class="put_marker">Put Point</button>
+	<button class="spawn_path">Show Path</button>
+	<div id="lat"></div>
+	<div id="long"></div>
+</body>
+</html>
